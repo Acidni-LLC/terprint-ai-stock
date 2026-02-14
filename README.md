@@ -1,4 +1,4 @@
-# Terprint AI Stock Service 📦
+# Terprint AI Stock Service
 
 Real-time cannabis product inventory tracking service for the Terprint platform.
 
@@ -12,12 +12,12 @@ The Terprint AI Stock Service provides a queryable API for real-time product ava
 
 ## Features
 
-- ✅ **Real-time inventory** - Updated automatically from menu downloads
-- ✅ **Flexible querying** - Search by strain, type, location, dispensary, or price
-- ✅ **Deep linking** - Generate URLs to Terprint.Web for detailed views
-- ✅ **Fast Cosmos DB queries** - Partition key optimization for store-level queries
-- ✅ **Auto-documented API** - OpenAPI/Swagger at `/docs`
-- ✅ **Health monitoring** - Built-in health checks
+- **Real-time inventory** - Updated automatically from menu downloads
+- **Flexible querying** - Search by strain, type, location, dispensary, or price
+- **Deep linking** - Generate URLs to Terprint.Web for detailed views
+- **Fast Cosmos DB queries** - Partition key optimization for store-level queries
+- **Auto-documented API** - OpenAPI/Swagger at `/docs`
+- **Health monitoring** - Built-in health checks
 
 ## API Endpoints
 
@@ -57,7 +57,7 @@ Each stock item contains:
 | `product_type` | string | Category (flower, vape, etc) |
 | `store_id` | string | Store identifier |
 | `store_name` | string | Store name |
-| `dispensary_id` | int | Grower ID (1=Cookies, 2=MÜV, etc) |
+| `dispensary_id` | int | Grower ID (1=Cookies, 2=MUV, etc) |
 | `dispensary_name` | string | Dispensary name |
 | `batch_id` | string | Batch number (if available) |
 | `price` | float | Current price |
@@ -98,15 +98,15 @@ poetry run uvicorn app:app --reload --port 8000
 
 ### Test Endpoints
 
-```bash
+```powershell
 # Health check
-curl http://localhost:8000/health
+Invoke-RestMethod -Uri "http://localhost:8000/health"
 
 # Search stock
-curl "http://localhost:8000/api/stock/search?strain=Blue%20Dream"
+Invoke-RestMethod -Uri "http://localhost:8000/api/stock/search?strain=Blue%20Dream"
 
 # API documentation
-open http://localhost:8000/docs
+Start-Process "http://localhost:8000/docs"
 ```
 
 ## Deployment
@@ -213,10 +213,10 @@ async with httpx.AsyncClient() as client:
 
 ## Security
 
-- ✅ **Managed Identity** - No connection strings in code
-- ✅ **APIM Gateway** - All traffic through API Management
-- ✅ **CORS** - Configured for allowed origins
-- ✅ **HTTPS** - Enforced by Container Apps
+- **Managed Identity** - No connection strings in code
+- **APIM Gateway** - All traffic through API Management
+- **CORS** - Configured for allowed origins
+- **HTTPS** - Enforced by Container Apps
 
 ## Contributing
 
@@ -227,7 +227,7 @@ async with httpx.AsyncClient() as client:
 
 ## License
 
-Copyright © 2026 Acidni LLC. All rights reserved.
+Copyright (c) 2026 Acidni LLC. All rights reserved.
 
 ## Support
 

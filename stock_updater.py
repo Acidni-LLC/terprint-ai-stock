@@ -8,7 +8,6 @@ import hashlib
 import json
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from azure.cosmos.aio import CosmosClient
@@ -29,7 +28,7 @@ STORAGE_URL = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net"
 # Dispensary mapping
 DISPENSARY_MAP = {
     1: "Cookies",
-    2: "MÜV",
+    2: "MUV",
     3: "Flowery",
     4: "Trulieve",
     10: "Curaleaf"
@@ -55,11 +54,11 @@ class StockUpdater:
         self.cosmos_client = CosmosClient(COSMOS_ENDPOINT, self.credential)
         database = self.cosmos_client.get_database_client(DATABASE_NAME)
         self.container = database.get_container_client(CONTAINER_NAME)
-        logger.info("✅ Cosmos DB connected")
+        logger.info("OK Cosmos DB connected")
         
         # Blob Storage
         self.blob_client = BlobServiceClient(STORAGE_URL, credential=self.credential)
-        logger.info("✅ Blob Storage connected")
+        logger.info("OK Blob Storage connected")
     
     async def close(self):
         """Close Azure clients"""
@@ -212,7 +211,7 @@ class StockUpdater:
             for product in products:
                 await self.container.upsert_item(product)
             
-            logger.info(f"✅ Updated {len(products)} stock items in Cosmos DB")
+            logger.info(f"OK Updated {len(products)} stock items in Cosmos DB")
         
         except Exception as e:
             logger.error(f"Error updating stock: {e}")
@@ -235,7 +234,7 @@ class StockUpdater:
         # Update stock
         await self.update_stock(all_products)
         
-        logger.info(f"✅ Processed {len(all_products)} total products")
+        logger.info(f"OK Processed {len(all_products)} total products")
         return len(all_products)
     
     async def process_all_menus(self):
@@ -253,7 +252,7 @@ class StockUpdater:
         # Update stock
         await self.update_stock(all_products)
         
-        logger.info(f"✅ Full refresh complete: {len(all_products)} products")
+        logger.info(f"OK Full refresh complete: {len(all_products)} products")
         return len(all_products)
 
 
@@ -269,7 +268,7 @@ async def main():
         # Process latest menus (default: last 2 hours)
         count = await updater.process_latest_menus(hours_ago=2)
         
-        logger.info(f"✅ Stock update complete: {count} products")
+        logger.info(f"OK Stock update complete: {count} products")
     
     finally:
         await updater.close()

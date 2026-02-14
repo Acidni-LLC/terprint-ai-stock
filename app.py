@@ -28,6 +28,7 @@ logger = logging.getLogger("terprint-ai-stock")
 COSMOS_ENDPOINT = "https://cosmos-terprint-dev.documents.azure.com:443/"
 DATABASE_NAME = "TerprintAI"
 CONTAINER_NAME = "stock"
+APP_VERSION = "20260214-001"
 
 # Global clients
 cosmos_client: Optional[CosmosClient] = None
@@ -85,9 +86,9 @@ async def lifespan(app: FastAPI):
         cosmos_client = CosmosClient(COSMOS_ENDPOINT, credential)
         database = cosmos_client.get_database_client(DATABASE_NAME)
         container = database.get_container_client(CONTAINER_NAME)
-        logger.info("✅ Cosmos DB connection established")
+        logger.info("OK Cosmos DB connection established")
     except Exception as e:
-        logger.error(f"❌ Failed to connect to Cosmos DB: {e}")
+        logger.error(f"ERROR Failed to connect to Cosmos DB: {e}")
         # Service will still start but will fail on requests
     
     yield
@@ -101,7 +102,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Terprint AI Stock Service",
     description="Real-time cannabis product inventory tracking",
-    version="20260214-001",
+    version=APP_VERSION,
     lifespan=lifespan
 )
 
@@ -115,6 +116,14 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def add_version_header(request, call_next):
+    """Add version tag to all responses."""
+    response = await call_next(request)
+    response.headers["X-App-Version"] = APP_VERSION
+    return response
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
@@ -123,7 +132,7 @@ async def health_check():
     return HealthResponse(
         status="healthy" if cosmos_connected else "degraded",
         service="terprint-ai-stock",
-        version="20260214-001",
+        version=APP_VERSION,
         timestamp=datetime.utcnow().isoformat(),
         cosmos_connected=cosmos_connected
     )
@@ -144,7 +153,7 @@ async def search_stock(
     
     Examples:
     - /api/stock/search?strain=Blue%20Dream
-    - /api/stock/search?product_type=flower&dispensary=MÜV
+    - /api/stock/search?product_type=flower&dispensary=MUV
     - /api/stock/search?store_id=muv-orlando
     - /api/stock/search?max_price=50
     """
