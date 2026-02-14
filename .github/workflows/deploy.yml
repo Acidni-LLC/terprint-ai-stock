@@ -1,0 +1,93 @@
+name: Deploy Terprint AI Stock Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_CONTAINER_REGISTRY: crterprint.azurecr.io
+  IMAGE_NAME: terprint-ai-stock
+  CONTAINER_APP_NAME: ca-terprint-stock
+  RESOURCE_GROUP: rg-dev-terprint-ca
+  
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Log in to Azure Container Registry
+        run: |
+          az acr login --name crterprint
+      
+      - name: Build and push Docker image
+        run: |
+          # Generate unique tag based on commit SHA
+          IMAGE_TAG="dev-${{ github.sha }}"
+          
+          # Build image
+          docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG} .
+          docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
+          
+          # Push both tags
+          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG}
+          docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+      
+      - name: Create Container App (if not exists)
+        continue-on-error: true
+        run: |
+          az containerapp create \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --environment kindmoss-c6723cbe \
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            --target-port 8000 \
+            --ingress external \
+            --min-replicas 1 \
+            --max-replicas 3 \
+            --cpu 0.5 \
+            --memory 1.0Gi \
+            --registry-server ${{ env.AZURE_CONTAINER_REGISTRY }} \
+            --system-assigned
+      
+      - name: Update Container App
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+      
+      - name: Get Container App URL
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          
+          echo "✅ Deployment complete!"
+          echo "🌐 Service URL: https://${FQDN}"
+          echo "🏥 Health check: https://${FQDN}/health"
+          echo "📚 API docs: https://${FQDN}/docs"
+      
+      - name: Verify deployment
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          
+          # Wait for service to be ready
+          sleep 30
+          
+          # Test health endpoint
+          curl -f "https://${FQDN}/health" || exit 1
