@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_CONTAINER_REGISTRY: crterprint.azurecr.io
+  AZURE_CONTAINER_REGISTRY: cracidnidev.azurecr.io
   IMAGE_NAME: terprint-ai-stock
   CONTAINER_APP_NAME: ca-terprint-stock
-  RESOURCE_GROUP: rg-dev-terprint-ca
+  RESOURCE_GROUP: rg-dev-acidni-shared
   
 jobs:
   build-and-deploy:
@@ -22,11 +22,11 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.ORG_AZURE_CREDENTIALS }}
       
       - name: Log in to Azure Container Registry
         run: |
-          az acr login --name crterprint
+          az acr login --name cracidnidev
       
       - name: Build and push Docker image
         run: |
@@ -47,7 +47,7 @@ jobs:
           az containerapp create \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --environment kindmoss-c6723cbe \
+            --environment greenbay-731aa80e \
             --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             --target-port 8000 \
             --ingress external \
