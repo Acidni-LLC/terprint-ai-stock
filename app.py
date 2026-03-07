@@ -141,6 +141,11 @@ async def health_check():
 @app.get("/api/stock/search", response_model=StockQueryResponse)
 async def search_stock(
     strain: Optional[str] = Query(None, description="Strain name (partial match)"),
+    strain_names: Optional[str] = Query(
+        None,
+        description="Comma-separated strain names to filter (e.g. favorites list)",
+        alias="strain_names",
+    ),
     product_type: Optional[str] = Query(None, description="Product type filter"),
     dispensary: Optional[str] = Query(None, description="Dispensary name"),
     store_id: Optional[str] = Query(None, description="Store ID"),
@@ -153,6 +158,7 @@ async def search_stock(
     
     Examples:
     - /api/stock/search?strain=Blue%20Dream
+    - /api/stock/search?strain_names=Blue%20Dream,OG%20Kush,Gelato
     - /api/stock/search?product_type=flower&dispensary=MUV
     - /api/stock/search?store_id=muv-orlando
     - /api/stock/search?max_price=50
@@ -167,6 +173,16 @@ async def search_stock(
     if strain:
         query_parts.append("AND CONTAINS(LOWER(c.strain_name), @strain)")
         parameters.append({"name": "@strain", "value": strain.lower()})
+    
+    if strain_names:
+        names = [n.strip() for n in strain_names.split(",") if n.strip()]
+        if names:
+            or_clauses = []
+            for i, name in enumerate(names):
+                param = f"@sn{i}"
+                or_clauses.append(f"CONTAINS(LOWER(c.strain_name), {param})")
+                parameters.append({"name": param, "value": name.lower()})
+            query_parts.append(f"AND ({' OR '.join(or_clauses)})")
     
     if product_type:
         query_parts.append("AND LOWER(c.product_type) = @product_type")
