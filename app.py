@@ -526,24 +526,29 @@ async def stock_status():
         async for row in container.query_items(count_q):
             total_items = row
 
-        # Unique strains
-        strain_q = "SELECT VALUE COUNT(1) FROM (SELECT DISTINCT VALUE c.strain_name FROM c)"
-        unique_strains = 0
-        async for row in container.query_items(strain_q):
-            unique_strains = row
+        # Unique strains (Cosmos DB doesn't support COUNT(DISTINCT) or subqueries in FROM)
+        strain_set: set[str] = set()
+        async for row in container.query_items("SELECT DISTINCT VALUE c.strain_name FROM c"):
+            strain_set.add(row)
+        unique_strains = len(strain_set)
 
         # By dispensary
         disp_q = (
-            "SELECT c.dispensary_name, COUNT(1) AS cnt, "
-            "COUNT(DISTINCT c.store_id) AS stores "
-            "FROM c GROUP BY c.dispensary_name"
+            "SELECT c.dispensary_name, c.store_id, COUNT(1) AS cnt "
+            "FROM c GROUP BY c.dispensary_name, c.store_id"
         )
-        dispensaries: Dict[str, DispensaryDetail] = {}
+        disp_agg: Dict[str, dict] = {}
         async for row in container.query_items(disp_q):
             name = row.get("dispensary_name", "Unknown")
+            if name not in disp_agg:
+                disp_agg[name] = {"count": 0, "stores": set()}
+            disp_agg[name]["count"] += row.get("cnt", 0)
+            disp_agg[name]["stores"].add(row.get("store_id"))
+        dispensaries: Dict[str, DispensaryDetail] = {}
+        for name, agg in disp_agg.items():
             dispensaries[name] = DispensaryDetail(
-                count=row.get("cnt", 0),
-                stores=row.get("stores", 0),
+                count=agg["count"],
+                stores=len(agg["stores"]),
                 freshest_hours=0,
             )
 
@@ -557,10 +562,10 @@ async def stock_status():
             ))
 
         # Unique stores
-        store_q = "SELECT VALUE COUNT(1) FROM (SELECT DISTINCT VALUE c.store_id FROM c)"
-        store_count = 0
-        async for row in container.query_items(store_q):
-            store_count = row
+        store_set: set[str] = set()
+        async for row in container.query_items("SELECT DISTINCT VALUE c.store_id FROM c"):
+            store_set.add(row)
+        store_count = len(store_set)
 
         index_available = total_items > 0
 
