@@ -532,17 +532,15 @@ async def stock_status():
             strain_set.add(row)
         unique_strains = len(strain_set)
 
-        # By dispensary
-        disp_q = (
-            "SELECT c.dispensary_name, c.store_id, COUNT(1) AS cnt "
-            "FROM c GROUP BY c.dispensary_name, c.store_id"
-        )
+        # By dispensary — client-side aggregation (Cosmos SDK doesn't support GROUP BY)
         disp_agg: Dict[str, dict] = {}
-        async for row in container.query_items(disp_q):
+        async for row in container.query_items(
+            "SELECT c.dispensary_name, c.store_id FROM c"
+        ):
             name = row.get("dispensary_name", "Unknown")
             if name not in disp_agg:
                 disp_agg[name] = {"count": 0, "stores": set()}
-            disp_agg[name]["count"] += row.get("cnt", 0)
+            disp_agg[name]["count"] += 1
             disp_agg[name]["stores"].add(row.get("store_id"))
         dispensaries: Dict[str, DispensaryDetail] = {}
         for name, agg in disp_agg.items():
@@ -552,14 +550,17 @@ async def stock_status():
                 freshest_hours=0,
             )
 
-        # By category
-        cat_q = "SELECT c.product_type, COUNT(1) AS cnt FROM c GROUP BY c.product_type"
-        categories: List[CategoryStat] = []
-        async for row in container.query_items(cat_q):
-            categories.append(CategoryStat(
-                category=row.get("product_type", "unknown"),
-                count=row.get("cnt", 0),
-            ))
+        # By category — client-side aggregation
+        cat_agg: Dict[str, int] = {}
+        async for row in container.query_items(
+            "SELECT c.product_type FROM c"
+        ):
+            pt = row.get("product_type", "unknown")
+            cat_agg[pt] = cat_agg.get(pt, 0) + 1
+        categories: List[CategoryStat] = [
+            CategoryStat(category=cat, count=cnt)
+            for cat, cnt in cat_agg.items()
+        ]
 
         # Unique stores
         store_set: set[str] = set()
