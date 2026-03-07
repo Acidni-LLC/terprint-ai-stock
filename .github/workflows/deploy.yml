@@ -47,7 +47,7 @@ jobs:
           az containerapp create \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --environment greenbay-731aa80e \
+            --environment cae-acidni-dev \
             --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             --target-port 8000 \
             --ingress external \

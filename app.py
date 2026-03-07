@@ -17,6 +17,8 @@ from pydantic import BaseModel, Field
 from azure.cosmos.aio import CosmosClient
 from azure.identity.aio import DefaultAzureCredential
 
+from problem_details import register_problem_handlers
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -114,6 +116,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# RFC 7807 Problem Details error handlers
+register_problem_handlers(app, app_name="terprint-ai-stock")
 
 
 @app.middleware("http")
