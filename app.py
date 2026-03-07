@@ -216,8 +216,7 @@ async def search_stock(
         items = []
         query_iterator = container.query_items(
             query=query,
-            parameters=parameters,
-            enable_cross_partition_query=True
+            parameters=parameters
         )
         
         async for item in query_iterator:
@@ -247,8 +246,7 @@ async def get_stock_by_strain(strain_name: str):
         items = []
         query_iterator = container.query_items(
             query=query,
-            parameters=parameters,
-            enable_cross_partition_query=True
+            parameters=parameters
         )
         
         async for item in query_iterator:
@@ -309,8 +307,7 @@ async def get_stock_by_dispensary(dispensary_id: int):
         items = []
         query_iterator = container.query_items(
             query=query,
-            parameters=parameters,
-            enable_cross_partition_query=True
+            parameters=parameters
         )
         
         async for item in query_iterator:

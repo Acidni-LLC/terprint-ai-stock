@@ -41,30 +41,36 @@ jobs:
           
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
       
-      - name: Create Container App (if not exists)
-        continue-on-error: true
+      - name: Deploy to Container App
         run: |
-          az containerapp create \
-            --name ${{ env.CONTAINER_APP_NAME }} \
+          # Check if the container app exists
+          EXISTS=$(az containerapp show --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --environment cae-acidni-dev \
-            --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
-            --target-port 8000 \
-            --ingress external \
-            --min-replicas 0 \
-            --max-replicas 3 \
-            --cpu 0.5 \
-            --memory 1.0Gi \
-            --registry-server ${{ env.AZURE_CONTAINER_REGISTRY }} \
-            --registry-identity system \
-            --env-vars "PYTHONUNBUFFERED=1"
-      
-      - name: Update Container App
-        run: |
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            --query name -o tsv 2>/dev/null || echo "")
+
+          if [ -z "$EXISTS" ]; then
+            echo "Container app does not exist, creating..."
+            az containerapp create \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --environment cae-acidni-dev \
+              --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+              --target-port 8000 \
+              --ingress external \
+              --min-replicas 0 \
+              --max-replicas 3 \
+              --cpu 0.5 \
+              --memory 1.0Gi \
+              --registry-server ${{ env.AZURE_CONTAINER_REGISTRY }} \
+              --registry-identity system \
+              --env-vars "PYTHONUNBUFFERED=1"
+          else
+            echo "Container app exists, updating image..."
+            az containerapp update \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --image ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          fi
       
       - name: Get Container App URL
         run: |
