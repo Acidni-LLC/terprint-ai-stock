@@ -87,9 +87,9 @@ jobs:
       - name: Verify deployment
         shell: pwsh
         run: |
-          $fqdn = az containerapp show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+          $fqdn = az containerapp show `
+            --name ${{ env.CONTAINER_APP_NAME }} `
+            --resource-group ${{ env.RESOURCE_GROUP }} `
             --query properties.configuration.ingress.fqdn -o tsv
           
           $healthUrl = "https://$fqdn/health"
