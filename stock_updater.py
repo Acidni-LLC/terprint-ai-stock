@@ -96,13 +96,54 @@ class StockUpdater:
         
         return urls
     
+    def _extract_product_type(self, menu_item: Dict[str, Any]) -> str:
+        """Extract product type/category from dispensary-specific JSON structures.
+
+        Each dispensary uses a different field name and format:
+        - Cookies: ``category`` (str)
+        - Green Dragon: ``category_name`` (str)
+        - MUV: ``category`` as dict ``{"name": "Flower"}``
+        - Trulieve: ``categories`` as list of dicts ``[{"name": "Flower"}]``
+        - Flowery: ``categories`` as list of strings ``["Flower"]``
+        """
+        # 1. Simple string: Cookies ("category"), Green Dragon ("category_name")
+        raw = menu_item.get("category")
+        if isinstance(raw, str) and raw:
+            return raw
+        raw = menu_item.get("category_name")
+        if isinstance(raw, str) and raw:
+            return raw
+        raw = menu_item.get("type")
+        if isinstance(raw, str) and raw:
+            return raw
+
+        # 2. Dict: MUV uses category as {"name": "Flower"}
+        raw = menu_item.get("category")
+        if isinstance(raw, dict):
+            name = raw.get("name")
+            if name:
+                return name
+
+        # 3. Array: Trulieve [{"name":"Flower"}], Flowery ["Flower"]
+        categories = menu_item.get("categories")
+        if isinstance(categories, list):
+            for cat in categories:
+                if isinstance(cat, str) and cat:
+                    return cat
+                if isinstance(cat, dict):
+                    name = cat.get("name", "")
+                    if name and name.lower() not in ("brands",):
+                        return name
+
+        return "unknown"
+
     def extract_product_info(self, menu_item: Dict[str, Any], dispensary_id: int,
                              store_id: str, store_name: str) -> Optional[Dict[str, Any]]:
         """Extract standardized product info from menu item"""
         try:
             # Extract core fields (dispensary-specific parsing)
             strain_name = menu_item.get("name") or menu_item.get("productName") or menu_item.get("title")
-            product_type = menu_item.get("category") or menu_item.get("type") or "unknown"
+            product_type = self._extract_product_type(menu_item)
             price = float(menu_item.get("price", 0) or menu_item.get("Price", 0))
             
             # Size extraction
