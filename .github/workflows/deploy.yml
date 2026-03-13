@@ -85,13 +85,26 @@ jobs:
           echo "API docs: https://${FQDN}/docs"
       
       - name: Verify deployment
-        shell: pwsh
         run: |
-          $fqdn = az containerapp show `
-            --name ${{ env.CONTAINER_APP_NAME }} `
-            --resource-group ${{ env.RESOURCE_GROUP }} `
-            --query properties.configuration.ingress.fqdn -o tsv
-          
-          $healthUrl = "https://$fqdn/health"
-          $response = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 30
-          if (-not $response) { throw "Health check failed" }
+          # Container App has IP restrictions (APIM-only) — cannot call health URL directly.
+          # Instead verify the latest revision is running via Azure CLI.
+          MAX_RETRIES=10
+          SLEEP_SEC=15
+          for i in $(seq 1 $MAX_RETRIES); do
+            STATE=$(az containerapp revision list \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "[0].properties.runningState" -o tsv 2>/dev/null)
+            echo "Attempt $i/$MAX_RETRIES — revision state: $STATE"
+            if [ "$STATE" = "Running" ]; then
+              echo "Deployment verified: latest revision is Running."
+              exit 0
+            fi
+            sleep $SLEEP_SEC
+          done
+          echo "ERROR: Latest revision did not reach Running state within $((MAX_RETRIES * SLEEP_SEC))s"
+          az containerapp revision list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[0].{name:name,state:properties.runningState,replicas:properties.replicas}" -o table
+          exit 1
