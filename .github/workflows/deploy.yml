@@ -87,7 +87,7 @@ jobs:
       - name: Verify deployment
         run: |
           # Container App has IP restrictions (APIM-only) — cannot call health URL directly.
-          # Instead verify the latest revision is running via Azure CLI.
+          # Verify the latest revision is Running OR ScaledToZero (healthy idle, min-replicas=0).
           MAX_RETRIES=10
           SLEEP_SEC=15
           for i in $(seq 1 $MAX_RETRIES); do
@@ -96,13 +96,13 @@ jobs:
               --resource-group ${{ env.RESOURCE_GROUP }} \
               --query "[0].properties.runningState" -o tsv 2>/dev/null)
             echo "Attempt $i/$MAX_RETRIES — revision state: $STATE"
-            if [ "$STATE" = "Running" ]; then
-              echo "Deployment verified: latest revision is Running."
+            if [ "$STATE" = "Running" ] || [ "$STATE" = "ScaledToZero" ]; then
+              echo "Deployment verified: latest revision is ${STATE}."
               exit 0
             fi
             sleep $SLEEP_SEC
           done
-          echo "ERROR: Latest revision did not reach Running state within $((MAX_RETRIES * SLEEP_SEC))s"
+          echo "ERROR: Latest revision did not reach Running/ScaledToZero state within $((MAX_RETRIES * SLEEP_SEC))s"
           az containerapp revision list \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
