@@ -7,18 +7,46 @@ import asyncio
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
 from azure.cosmos.aio import CosmosClient
 from azure.identity.aio import DefaultAzureCredential
 import os
 from azure.storage.blob.aio import BlobServiceClient
+from azure.identity import DefaultAzureCredential as SyncDefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Runtime Key Vault secret loading (ADR-008)
+# ---------------------------------------------------------------------------
+_kv_client: Optional[SecretClient] = None
+_kv_cache: dict = {}
+_kv_expiry: dict = {}
+_KV_TTL_MINUTES = 5
+
+
+def _get_kv_secret(name: str) -> str:
+    """Fetch a secret from Azure Key Vault with 5-minute TTL cache."""
+    global _kv_client
+    now = datetime.utcnow()
+    if name in _kv_cache and now < _kv_expiry[name]:
+        return _kv_cache[name]
+    if _kv_client is None:
+        vault_name = os.environ.get("KEYVAULT_NAME", "kv-terprint-dev")
+        _kv_client = SecretClient(
+            vault_url=f"https://{vault_name}.vault.azure.net/",
+            credential=SyncDefaultAzureCredential(),
+        )
+    value = _kv_client.get_secret(name).value
+    _kv_cache[name] = value
+    _kv_expiry[name] = now + timedelta(minutes=_KV_TTL_MINUTES)
+    return value
+
+
 # Configuration
-COSMOS_ENDPOINT = os.environ.get("COSMOS_ENDPOINT", "https://acidni-cosmos-dev.documents.azure.com:443/")
 DATABASE_NAME = "TerprintAI"
 CONTAINER_NAME = "stock"
 
@@ -50,9 +78,12 @@ class StockUpdater:
         logger.info("Initializing Stock Updater...")
         
         self.credential = DefaultAzureCredential()
+
+        # Load Cosmos endpoint from Key Vault at runtime (ADR-008)
+        cosmos_endpoint = _get_kv_secret("terprint--cosmos-endpoint")
         
         # Cosmos DB
-        self.cosmos_client = CosmosClient(COSMOS_ENDPOINT, self.credential)
+        self.cosmos_client = CosmosClient(cosmos_endpoint, self.credential)
         database = self.cosmos_client.get_database_client(DATABASE_NAME)
         self.container = database.get_container_client(CONTAINER_NAME)
         logger.info("OK Cosmos DB connected")
