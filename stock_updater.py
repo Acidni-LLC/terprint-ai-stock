@@ -12,12 +12,13 @@ from typing import List, Dict, Any, Optional
 
 from azure.cosmos.aio import CosmosClient
 from azure.identity.aio import DefaultAzureCredential
+import os
 from azure.storage.blob.aio import BlobServiceClient
 
 logger = logging.getLogger(__name__)
 
 # Configuration
-COSMOS_ENDPOINT = "https://cosmos-terprint-dev.documents.azure.com:443/"
+COSMOS_ENDPOINT = os.environ.get("COSMOS_ENDPOINT", "https://acidni-cosmos-dev.documents.azure.com:443/")
 DATABASE_NAME = "TerprintAI"
 CONTAINER_NAME = "stock"
 

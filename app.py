@@ -19,6 +19,7 @@ from azure.cosmos.aio import CosmosClient
 from azure.identity.aio import DefaultAzureCredential
 
 from problem_details import register_problem_handlers
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -28,7 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger("terprint-ai-stock")
 
 # Cosmos DB configuration
-COSMOS_ENDPOINT = "https://cosmos-terprint-dev.documents.azure.com:443/"
+COSMOS_ENDPOINT = os.environ.get("COSMOS_ENDPOINT", "https://acidni-cosmos-dev.documents.azure.com:443/")
 DATABASE_NAME = "TerprintAI"
 CONTAINER_NAME = "stock"
 LEDGER_CONTAINER_NAME = "stock-ledger"
